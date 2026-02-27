@@ -397,7 +397,7 @@ cmd_maps() {
     require_running_droplet
 
     if [[ $# -eq 0 ]]; then
-        ssh root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/*.unr; do basename "$f" .unr; done' | sort
+        ssh root@"$DROPLET_IP" 'prefix=$(sed -n "s|.*ucc-bin server \([^-]*\)-.*|\1|p" /etc/systemd/system/ut99.service); for f in /opt/ut99/Maps/"${prefix}"-*.unr; do basename "$f" .unr; done' | sort
     else
         ssh root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
     fi
