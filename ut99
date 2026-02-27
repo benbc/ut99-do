@@ -21,6 +21,70 @@ check_deps() {
     doctl account get >/dev/null 2>&1 || die "doctl not authenticated. Run: doctl auth init"
 }
 
+find_droplet() {
+    doctl compute droplet list --format ID,Name --no-header \
+        | awk -v name="$DROPLET_NAME" '$2 == name { print $1; exit }'
+}
+
+get_droplet_ip() {
+    local droplet_id="$1"
+    doctl compute droplet get "$droplet_id" --format PublicIPv4 --no-header
+}
+
+get_droplet_status() {
+    local droplet_id="$1"
+    doctl compute droplet get "$droplet_id" --format Status --no-header
+}
+
+wait_for_active() {
+    local droplet_id="$1"
+    info "Waiting for droplet to become active..."
+    local status
+    for i in $(seq 1 60); do
+        status=$(get_droplet_status "$droplet_id")
+        [[ "$status" == "active" ]] && return 0
+        sleep 5
+    done
+    die "Timed out waiting for droplet to become active (status: $status)"
+}
+
+wait_for_ssh() {
+    local ip="$1"
+    info "Waiting for SSH to become available..."
+    for i in $(seq 1 60); do
+        if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new \
+               "root@${ip}" true 2>/dev/null; then
+            return 0
+        fi
+        sleep 5
+    done
+    die "Timed out waiting for SSH on $ip"
+}
+
+wait_for_off() {
+    local droplet_id="$1"
+    info "Waiting for droplet to power off..."
+    local status
+    for i in $(seq 1 60); do
+        status=$(get_droplet_status "$droplet_id")
+        [[ "$status" == "off" ]] && return 0
+        sleep 5
+    done
+    die "Timed out waiting for droplet to power off (status: $status)"
+}
+
+check_server_health() {
+    local ip="$1"
+    info "Checking UT99 server is responding..."
+    for i in $(seq 1 30); do
+        if echo -ne '\\status\\' | nc -u -w 2 "$ip" 7778 2>/dev/null | grep -q .; then
+            return 0
+        fi
+        sleep 2
+    done
+    die "UT99 server on $ip:7778 is not responding"
+}
+
 usage() {
     cat <<'USAGE'
 Usage: ut99 <command>
