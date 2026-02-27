@@ -78,7 +78,7 @@ check_server_health() {
     local ip="$1"
     info "Checking UT99 server is responding..."
     for i in $(seq 1 30); do
-        if echo -ne '\\status\\' | nc -u -w 2 "$ip" 7778 2>/dev/null | grep -q .; then
+        if echo -ne '\\status\\' | nc -u -w 2 "$ip" 7778 2>/dev/null | grep -q '\\gamename\\ut\\'; then
             return 0
         fi
         sleep 2
