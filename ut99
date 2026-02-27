@@ -37,6 +37,17 @@ get_droplet_status() {
     doctl compute droplet get "$droplet_id" --format Status --no-header
 }
 
+require_running_droplet() {
+    DROPLET_ID=$(find_droplet)
+    [[ -n "$DROPLET_ID" ]] || die "No droplet '$DROPLET_NAME' found. Run: ut99 create"
+
+    local status
+    status=$(get_droplet_status "$DROPLET_ID")
+    [[ "$status" == "active" ]] || die "Droplet '$DROPLET_NAME' is not running (status: $status)"
+
+    DROPLET_IP=$(get_droplet_ip "$DROPLET_ID")
+}
+
 wait_for_active() {
     local droplet_id="$1"
     info "Waiting for droplet to become active..."
