@@ -97,7 +97,124 @@ Commands:
 USAGE
 }
 
-cmd_create() { die "not implemented"; }
+provision_server() {
+    local ip="$1"
+
+    info "Provisioning UT99 server on $ip..."
+
+    ssh -o StrictHostKeyChecking=accept-new "root@${ip}" bash <<'PROVISION'
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+echo "==> Installing dependencies..."
+apt-get update -qq
+apt-get install -y -qq libstdc++6 ufw > /dev/null
+
+echo "==> Downloading UT99 installer..."
+cd /tmp
+curl -fsSL -o install-ut99.sh \
+    "https://raw.githubusercontent.com/OldUnreal/FullGameInstallers/master/Linux/install-ut99.sh"
+chmod +x install-ut99.sh
+
+echo "==> Installing UT99..."
+./install-ut99.sh --destination /opt/ut99 --ui-mode none \
+    --application-entry skip --desktop-shortcut skip
+
+echo "==> Creating ut99 user..."
+useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
+chown -R ut99:ut99 /opt/ut99
+
+echo "==> Configuring server..."
+INI="/opt/ut99/System/UnrealTournament.ini"
+
+sed -i 's/^CacheSizeMegs=.*/CacheSizeMegs=64/' "$INI"
+sed -i 's/^NetServerMaxTickRate=.*/NetServerMaxTickRate=35/' "$INI"
+sed -i 's/^MaxClientRate=.*/MaxClientRate=15000/' "$INI"
+sed -i 's/^UseCompression=.*/UseCompression=True/' "$INI"
+sed -i 's/^AllowDownloads=.*/AllowDownloads=True/' "$INI"
+sed -i 's/^ServerName=.*/ServerName=UT99 Server/' "$INI"
+
+echo "==> Installing systemd service..."
+cat > /etc/systemd/system/ut99.service <<'SERVICE'
+[Unit]
+Description=Unreal Tournament 99 Dedicated Server
+After=network.target
+
+[Service]
+Type=simple
+User=ut99
+Group=ut99
+WorkingDirectory=/opt/ut99/System
+ExecStart=/opt/ut99/System/ucc-bin server DM-Deck16][?game=Botpack.DeathMatchPlus -nohomedir
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload
+
+echo "==> Configuring firewall..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp
+ufw allow 7777:7779/udp
+ufw --force enable
+
+echo "==> Starting UT99 server..."
+systemctl enable ut99
+systemctl start ut99
+
+echo "==> Provisioning complete"
+PROVISION
+}
+
+cmd_create() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+
+    if [[ -n "$droplet_id" ]]; then
+        local ip
+        ip=$(get_droplet_ip "$droplet_id")
+        info "Droplet '$DROPLET_NAME' already exists at $ip"
+        echo "$ip"
+        return 0
+    fi
+
+    local ssh_keys
+    ssh_keys=$(doctl compute ssh-key list --format FingerPrint --no-header | head -1)
+    [[ -n "$ssh_keys" ]] || die "No SSH keys found in your DO account. Add one: doctl compute ssh-key create"
+
+    info "Creating droplet '$DROPLET_NAME'..."
+    droplet_id=$(doctl compute droplet create "$DROPLET_NAME" \
+        --size "$DROPLET_SIZE" \
+        --region "$DROPLET_REGION" \
+        --image "$DROPLET_IMAGE" \
+        --ssh-keys "$ssh_keys" \
+        --format ID \
+        --no-header \
+        --wait)
+
+    [[ -n "$droplet_id" ]] || die "Failed to create droplet"
+
+    wait_for_active "$droplet_id"
+
+    local ip
+    ip=$(get_droplet_ip "$droplet_id")
+    [[ -n "$ip" ]] || die "Droplet has no public IP"
+
+    wait_for_ssh "$ip"
+    provision_server "$ip"
+    check_server_health "$ip"
+
+    info "UT99 server ready at ${ip}:7777"
+    echo "$ip"
+}
 cmd_destroy() { die "not implemented"; }
 cmd_start() { die "not implemented"; }
 cmd_stop() { die "not implemented"; }
