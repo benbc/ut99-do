@@ -231,7 +231,14 @@ cmd_destroy() {
     fi
 
     info "Destroying droplet '$DROPLET_NAME' ($droplet_id)..."
-    doctl compute droplet delete "$droplet_id" --force
+    if ! doctl compute droplet delete "$droplet_id" --force 2>/dev/null; then
+        # Check if it's already gone (DO API eventual consistency)
+        if [[ -z "$(find_droplet)" ]]; then
+            info "Droplet already gone"
+            return 0
+        fi
+        die "Failed to destroy droplet $droplet_id"
+    fi
     info "Destroyed"
 }
 
