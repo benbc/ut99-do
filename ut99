@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DROPLET_NAME="ut99"
+DROPLET_SIZE="s-1vcpu-1gb"
+DROPLET_REGION="lon1"
+DROPLET_IMAGE="ubuntu-24-04-x64"
+
+die() {
+    echo "error: $*" >&2
+    exit 1
+}
+
+info() {
+    echo "==> $*"
+}
+
+check_deps() {
+    command -v doctl >/dev/null 2>&1 || die "doctl not found. Install from https://docs.digitalocean.com/reference/doctl/"
+    command -v ssh >/dev/null 2>&1 || die "ssh not found"
+    doctl account get >/dev/null 2>&1 || die "doctl not authenticated. Run: doctl auth init"
+}
+
+usage() {
+    cat <<'USAGE'
+Usage: ut99 <command>
+
+Commands:
+  create   Create and provision a UT99 server
+  destroy  Destroy the UT99 server
+  start    Start the UT99 server (power on)
+  stop     Stop the UT99 server (power off)
+USAGE
+}
+
+cmd_create() { die "not implemented"; }
+cmd_destroy() { die "not implemented"; }
+cmd_start() { die "not implemented"; }
+cmd_stop() { die "not implemented"; }
+
+main() {
+    [[ $# -ge 1 ]] || { usage; exit 1; }
+
+    check_deps
+
+    case "$1" in
+        create)  cmd_create ;;
+        destroy) cmd_destroy ;;
+        start)   cmd_start ;;
+        stop)    cmd_stop ;;
+        *)       usage; exit 1 ;;
+    esac
+}
+
+main "$@"
