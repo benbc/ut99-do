@@ -198,6 +198,16 @@ done
 tmpfile=$(mktemp)
 in_section=false
 section_done=false
+
+inject_maps() {
+    local_index=0
+    for map in "$@"; do
+        echo "MapList[$local_index]=$map"
+        ((local_index++))
+    done
+    echo "MapListCount=$#"
+}
+
 {
     while IFS= read -r line; do
         if [[ "$line" == "[Botpack.DeathMatchPlus]" ]]; then
@@ -207,38 +217,35 @@ section_done=false
         fi
 
         if $in_section && ! $section_done; then
-            # Skip existing MapList and MapListCount lines
+            # Skip existing MapList and MapListCount lines anywhere in the section
             if [[ "$line" =~ ^MapList\[ ]] || [[ "$line" =~ ^MapListCount= ]]; then
                 continue
             fi
 
-            # We've hit a non-MapList line (or next section) — inject new entries
-            section_done=true
-            local_index=0
-            for map in "$@"; do
-                echo "MapList[$local_index]=$map"
-                ((local_index++))
-            done
-            echo "MapListCount=$#"
+            # New section header means we're leaving — inject before it
+            if [[ "$line" =~ ^\[.+\] ]]; then
+                inject_maps "$@"
+                section_done=true
+                echo "$line"
+                continue
+            fi
+
+            # Pass through all other lines in the section
             echo "$line"
             continue
         fi
 
         echo "$line"
     done
+
+    # Handle case where section runs to EOF without another section header
+    if $in_section && ! $section_done; then
+        inject_maps "$@"
+    fi
 } < "$INI" > "$tmpfile"
 
-# Handle case where MapList entries were at the very end of the section/file
-if $in_section && ! $section_done; then
-    local_index=0
-    for map in "$@"; do
-        echo "MapList[$local_index]=$map" >> "$tmpfile"
-        ((local_index++))
-    done
-    echo "MapListCount=$#" >> "$tmpfile"
-fi
-
 mv "$tmpfile" "$INI"
+chown ut99:ut99 "$INI"
 
 # Update systemd ExecStart to use first map
 sed -i "s|^\(ExecStart=/opt/ut99/System64/ucc-bin server \)[^ ?]*|\1$1|" "$SERVICE"
