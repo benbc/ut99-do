@@ -110,7 +110,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Installing dependencies..."
 apt-get update -qq
-apt-get install -y -qq libstdc++6 ufw > /dev/null
+apt-get install -y -qq libstdc++6 ufw p7zip-full jq > /dev/null
 
 echo "==> Downloading UT99 installer..."
 cd /tmp
