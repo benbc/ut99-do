@@ -228,7 +228,34 @@ cmd_destroy() {
     doctl compute droplet delete "$droplet_id" --force
     info "Destroyed"
 }
-cmd_start() { die "not implemented"; }
+cmd_start() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+    [[ -n "$droplet_id" ]] || die "No droplet '$DROPLET_NAME' found. Run: ut99 create"
+
+    local status
+    status=$(get_droplet_status "$droplet_id")
+
+    if [[ "$status" == "active" ]]; then
+        local ip
+        ip=$(get_droplet_ip "$droplet_id")
+        info "Droplet '$DROPLET_NAME' is already running at $ip"
+        echo "$ip"
+        return 0
+    fi
+
+    info "Powering on droplet '$DROPLET_NAME'..."
+    doctl compute droplet-action power-on "$droplet_id" --wait
+
+    wait_for_active "$droplet_id"
+
+    local ip
+    ip=$(get_droplet_ip "$droplet_id")
+    check_server_health "$ip"
+
+    info "UT99 server ready at ${ip}:7777"
+    echo "$ip"
+}
 cmd_stop() { die "not implemented"; }
 
 main() {
