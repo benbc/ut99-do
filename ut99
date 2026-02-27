@@ -256,7 +256,25 @@ cmd_start() {
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
 }
-cmd_stop() { die "not implemented"; }
+cmd_stop() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+    [[ -n "$droplet_id" ]] || die "No droplet '$DROPLET_NAME' found. Run: ut99 create"
+
+    local status
+    status=$(get_droplet_status "$droplet_id")
+
+    if [[ "$status" == "off" ]]; then
+        info "Droplet '$DROPLET_NAME' is already off"
+        return 0
+    fi
+
+    info "Shutting down droplet '$DROPLET_NAME'..."
+    doctl compute droplet-action shutdown "$droplet_id" --wait
+
+    wait_for_off "$droplet_id"
+    info "Droplet '$DROPLET_NAME' is off"
+}
 
 main() {
     [[ $# -ge 1 ]] || { usage; exit 1; }
