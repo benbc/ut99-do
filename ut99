@@ -259,7 +259,7 @@ cmd_start() {
     fi
 
     info "Powering on droplet '$DROPLET_NAME'..."
-    doctl compute droplet-action power-on "$droplet_id" --wait
+    doctl compute droplet-action power-on "$droplet_id" --wait > /dev/null
 
     wait_for_active "$droplet_id"
 
@@ -285,7 +285,7 @@ cmd_stop() {
     fi
 
     info "Shutting down droplet '$DROPLET_NAME'..."
-    doctl compute droplet-action shutdown "$droplet_id" --wait
+    doctl compute droplet-action shutdown "$droplet_id" --wait > /dev/null
 
     wait_for_off "$droplet_id"
     info "Droplet '$DROPLET_NAME' is off"
