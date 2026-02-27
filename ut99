@@ -215,7 +215,19 @@ cmd_create() {
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
 }
-cmd_destroy() { die "not implemented"; }
+cmd_destroy() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+
+    if [[ -z "$droplet_id" ]]; then
+        info "No droplet '$DROPLET_NAME' found — nothing to destroy"
+        return 0
+    fi
+
+    info "Destroying droplet '$DROPLET_NAME' ($droplet_id)..."
+    doctl compute droplet delete "$droplet_id" --force
+    info "Destroyed"
+}
 cmd_start() { die "not implemented"; }
 cmd_stop() { die "not implemented"; }
 
