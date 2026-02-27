@@ -397,8 +397,7 @@ cmd_maps() {
     require_running_droplet
 
     if [[ $# -eq 0 ]]; then
-        ssh root@"$DROPLET_IP" 'ls /opt/ut99/Maps/*.unr' \
-            | xargs -n1 basename | sed 's/\.unr$//' | sort
+        ssh root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/*.unr; do basename "$f" .unr; done' | sort
     else
         ssh root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
     fi
