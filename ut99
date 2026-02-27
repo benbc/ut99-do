@@ -203,7 +203,7 @@ inject_maps() {
     local_index=0
     for map in "$@"; do
         echo "MapList[$local_index]=$map"
-        ((local_index++))
+        ((local_index += 1))
     done
     echo "MapListCount=$#"
 }
