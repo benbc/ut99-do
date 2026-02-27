@@ -18,6 +18,7 @@ info() {
 check_deps() {
     command -v doctl >/dev/null 2>&1 || die "doctl not found. Install from https://docs.digitalocean.com/reference/doctl/"
     command -v ssh >/dev/null 2>&1 || die "ssh not found"
+    command -v nc >/dev/null 2>&1 || die "nc (netcat) not found"
     doctl account get >/dev/null 2>&1 || die "doctl not authenticated. Run: doctl auth init"
 }
 
@@ -179,9 +180,13 @@ cmd_create() {
     droplet_id=$(find_droplet)
 
     if [[ -n "$droplet_id" ]]; then
-        local ip
+        local ip status
         ip=$(get_droplet_ip "$droplet_id")
-        info "Droplet '$DROPLET_NAME' already exists at $ip"
+        status=$(get_droplet_status "$droplet_id")
+        if [[ "$status" == "active" ]]; then
+            check_server_health "$ip"
+        fi
+        info "Droplet '$DROPLET_NAME' already exists at $ip (status: $status)"
         echo "$ip"
         return 0
     fi
@@ -215,6 +220,7 @@ cmd_create() {
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
 }
+
 cmd_destroy() {
     local droplet_id
     droplet_id=$(find_droplet)
@@ -228,6 +234,7 @@ cmd_destroy() {
     doctl compute droplet delete "$droplet_id" --force
     info "Destroyed"
 }
+
 cmd_start() {
     local droplet_id
     droplet_id=$(find_droplet)
@@ -256,6 +263,7 @@ cmd_start() {
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
 }
+
 cmd_stop() {
     local droplet_id
     droplet_id=$(find_droplet)
