@@ -167,6 +167,89 @@ ufw allow 22/tcp
 ufw allow 7777:7779/udp
 ufw --force enable
 
+echo "==> Installing set-maps.sh helper..."
+cat > /opt/ut99/set-maps.sh <<'SETMAPS'
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $# -ge 1 ]] || { echo "Usage: set-maps.sh MAP1 [MAP2 ...]" >&2; exit 1; }
+
+MAPS_DIR="/opt/ut99/Maps"
+INI="/opt/ut99/System64/UnrealTournament.ini"
+SERVICE="/etc/systemd/system/ut99.service"
+
+# Validate all maps exist (case-insensitive)
+for map in "$@"; do
+    found=false
+    for f in "$MAPS_DIR"/*.unr; do
+        basename=$(basename "$f" .unr)
+        if [[ "${basename,,}" == "${map,,}" ]]; then
+            found=true
+            break
+        fi
+    done
+    if [[ "$found" == "false" ]]; then
+        echo "error: map '$map' not found in $MAPS_DIR" >&2
+        exit 1
+    fi
+done
+
+# Rewrite MapList entries in [Botpack.DeathMatchPlus] section
+tmpfile=$(mktemp)
+in_section=false
+section_done=false
+{
+    while IFS= read -r line; do
+        if [[ "$line" == "[Botpack.DeathMatchPlus]" ]]; then
+            in_section=true
+            echo "$line"
+            continue
+        fi
+
+        if $in_section && ! $section_done; then
+            # Skip existing MapList and MapListCount lines
+            if [[ "$line" =~ ^MapList\[ ]] || [[ "$line" =~ ^MapListCount= ]]; then
+                continue
+            fi
+
+            # We've hit a non-MapList line (or next section) — inject new entries
+            section_done=true
+            local_index=0
+            for map in "$@"; do
+                echo "MapList[$local_index]=$map"
+                ((local_index++))
+            done
+            echo "MapListCount=$#"
+            echo "$line"
+            continue
+        fi
+
+        echo "$line"
+    done
+} < "$INI" > "$tmpfile"
+
+# Handle case where MapList entries were at the very end of the section/file
+if $in_section && ! $section_done; then
+    local_index=0
+    for map in "$@"; do
+        echo "MapList[$local_index]=$map" >> "$tmpfile"
+        ((local_index++))
+    done
+    echo "MapListCount=$#" >> "$tmpfile"
+fi
+
+mv "$tmpfile" "$INI"
+
+# Update systemd ExecStart to use first map
+sed -i "s|^\(ExecStart=/opt/ut99/System64/ucc-bin server \)[^ ?]*|\1$1|" "$SERVICE"
+
+systemctl daemon-reload
+systemctl restart ut99
+
+echo "Map rotation set to: $*"
+SETMAPS
+chmod +x /opt/ut99/set-maps.sh
+
 echo "==> Starting UT99 server..."
 systemctl enable ut99
 systemctl start ut99
