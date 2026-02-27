@@ -1,0 +1,526 @@
+# ut99 CLI Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** A single Bash script (`ut99`) that creates, destroys, starts, and stops a UT99 dedicated server on Digital Ocean.
+
+**Architecture:** Single file Bash script. Talks to DO via `doctl`, provisions servers over SSH. All operations idempotent. No local state — droplet looked up by name.
+
+**Tech Stack:** Bash, doctl, ssh, UFW, systemd
+
+**Reference:** See `docs/plans/2026-02-27-ut99-cli-design.md` for full design rationale.
+
+**No TDD:** Per project rules (CLAUDE.md), this project does not use TDD. Testing is manual against real DO infrastructure.
+
+---
+
+### Task 1: Script skeleton
+
+**Files:**
+- Create: `ut99`
+
+**Step 1: Create the script with arg parsing, dep checks, and subcommand dispatch**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+DROPLET_NAME="ut99"
+DROPLET_SIZE="s-1vcpu-1gb"
+DROPLET_REGION="lon1"
+DROPLET_IMAGE="ubuntu-24-04-x64"
+
+die() {
+    echo "error: $*" >&2
+    exit 1
+}
+
+info() {
+    echo "==> $*"
+}
+
+check_deps() {
+    command -v doctl >/dev/null 2>&1 || die "doctl not found. Install from https://docs.digitalocean.com/reference/doctl/"
+    command -v ssh >/dev/null 2>&1 || die "ssh not found"
+    doctl account get >/dev/null 2>&1 || die "doctl not authenticated. Run: doctl auth init"
+}
+
+usage() {
+    cat <<'USAGE'
+Usage: ut99 <command>
+
+Commands:
+  create   Create and provision a UT99 server
+  destroy  Destroy the UT99 server
+  start    Start the UT99 server (power on)
+  stop     Stop the UT99 server (power off)
+USAGE
+}
+
+cmd_create() { die "not implemented"; }
+cmd_destroy() { die "not implemented"; }
+cmd_start() { die "not implemented"; }
+cmd_stop() { die "not implemented"; }
+
+main() {
+    [[ $# -ge 1 ]] || { usage; exit 1; }
+
+    check_deps
+
+    case "$1" in
+        create)  cmd_create ;;
+        destroy) cmd_destroy ;;
+        start)   cmd_start ;;
+        stop)    cmd_stop ;;
+        *)       usage; exit 1 ;;
+    esac
+}
+
+main "$@"
+```
+
+**Step 2: Make it executable**
+
+Run: `chmod +x ut99`
+
+**Step 3: Verify it runs**
+
+Run: `./ut99` — should print usage and exit 1.
+Run: `./ut99 create` — should print "error: not implemented" (if doctl is available) or the appropriate dep error.
+
+**Step 4: Commit**
+
+```bash
+git add ut99
+git commit -m "Add script skeleton with arg parsing and dep checks"
+```
+
+---
+
+### Task 2: Droplet helper functions
+
+**Files:**
+- Modify: `ut99`
+
+Add these functions between `check_deps` and `usage`:
+
+**Step 1: Add droplet lookup and wait helpers**
+
+```bash
+# Returns droplet ID or empty string if not found.
+find_droplet() {
+    doctl compute droplet list --format ID --no-header --tag-name "" \
+        | while read -r id; do
+            name=$(doctl compute droplet get "$id" --format Name --no-header)
+            if [[ "$name" == "$DROPLET_NAME" ]]; then
+                echo "$id"
+                return
+            fi
+        done
+    # Alternative simpler approach — doctl supports name filtering:
+    doctl compute droplet list --format ID,Name --no-header \
+        | awk -v name="$DROPLET_NAME" '$2 == name { print $1; exit }'
+}
+
+get_droplet_ip() {
+    local droplet_id="$1"
+    doctl compute droplet get "$droplet_id" --format PublicIPv4 --no-header
+}
+
+get_droplet_status() {
+    local droplet_id="$1"
+    doctl compute droplet get "$droplet_id" --format Status --no-header
+}
+
+wait_for_active() {
+    local droplet_id="$1"
+    info "Waiting for droplet to become active..."
+    local status
+    for i in $(seq 1 60); do
+        status=$(get_droplet_status "$droplet_id")
+        [[ "$status" == "active" ]] && return 0
+        sleep 5
+    done
+    die "Timed out waiting for droplet to become active (status: $status)"
+}
+
+wait_for_ssh() {
+    local ip="$1"
+    info "Waiting for SSH to become available..."
+    for i in $(seq 1 60); do
+        if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new \
+               "root@${ip}" true 2>/dev/null; then
+            return 0
+        fi
+        sleep 5
+    done
+    die "Timed out waiting for SSH on $ip"
+}
+
+wait_for_off() {
+    local droplet_id="$1"
+    info "Waiting for droplet to power off..."
+    local status
+    for i in $(seq 1 60); do
+        status=$(get_droplet_status "$droplet_id")
+        [[ "$status" == "off" ]] && return 0
+        sleep 5
+    done
+    die "Timed out waiting for droplet to power off (status: $status)"
+}
+
+check_server_health() {
+    local ip="$1"
+    info "Checking UT99 server is responding..."
+    for i in $(seq 1 30); do
+        # Send a GameSpy \status\ query to the UT99 query port
+        if echo -ne '\\status\\' | nc -u -w 2 "$ip" 7778 2>/dev/null | grep -q .; then
+            return 0
+        fi
+        sleep 2
+    done
+    die "UT99 server on $ip:7778 is not responding"
+}
+```
+
+**NOTE:** The `find_droplet` function shown above has two approaches. Use only the simpler `awk` approach:
+
+```bash
+find_droplet() {
+    doctl compute droplet list --format ID,Name --no-header \
+        | awk -v name="$DROPLET_NAME" '$2 == name { print $1; exit }'
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Add droplet helper functions"
+```
+
+---
+
+### Task 3: Create command — droplet creation and provisioning
+
+**Files:**
+- Modify: `ut99`
+
+**Step 1: Implement `cmd_create`**
+
+Replace the stub `cmd_create` with:
+
+```bash
+cmd_create() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+
+    if [[ -n "$droplet_id" ]]; then
+        local ip
+        ip=$(get_droplet_ip "$droplet_id")
+        info "Droplet '$DROPLET_NAME' already exists at $ip"
+        echo "$ip"
+        return 0
+    fi
+
+    # Get the SSH key fingerprint from doctl
+    local ssh_keys
+    ssh_keys=$(doctl compute ssh-key list --format FingerPrint --no-header | head -1)
+    [[ -n "$ssh_keys" ]] || die "No SSH keys found in your DO account. Add one: doctl compute ssh-key create"
+
+    info "Creating droplet '$DROPLET_NAME'..."
+    droplet_id=$(doctl compute droplet create "$DROPLET_NAME" \
+        --size "$DROPLET_SIZE" \
+        --region "$DROPLET_REGION" \
+        --image "$DROPLET_IMAGE" \
+        --ssh-keys "$ssh_keys" \
+        --format ID \
+        --no-header \
+        --wait)
+
+    [[ -n "$droplet_id" ]] || die "Failed to create droplet"
+
+    wait_for_active "$droplet_id"
+
+    local ip
+    ip=$(get_droplet_ip "$droplet_id")
+    [[ -n "$ip" ]] || die "Droplet has no public IP"
+
+    wait_for_ssh "$ip"
+    provision_server "$ip"
+    check_server_health "$ip"
+
+    info "UT99 server ready at ${ip}:7777"
+    echo "$ip"
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Implement create command"
+```
+
+---
+
+### Task 4: Server provisioning
+
+**Files:**
+- Modify: `ut99`
+
+This is the function that SSHs into a fresh droplet and sets up UT99.
+
+**Step 1: Add the `provision_server` function**
+
+```bash
+provision_server() {
+    local ip="$1"
+
+    info "Provisioning UT99 server on $ip..."
+
+    # Run provisioning as a single SSH session with a heredoc script.
+    # This avoids multiple SSH connections and keeps provisioning atomic.
+    ssh -o StrictHostKeyChecking=accept-new "root@${ip}" bash <<'PROVISION'
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+echo "==> Installing dependencies..."
+apt-get update -qq
+apt-get install -y -qq libstdc++6 ufw > /dev/null
+
+echo "==> Downloading UT99 installer..."
+cd /tmp
+curl -fsSL -o install-ut99.sh \
+    "https://raw.githubusercontent.com/OldUnreal/FullGameInstallers/master/Linux/install-ut99.sh"
+chmod +x install-ut99.sh
+
+echo "==> Installing UT99..."
+./install-ut99.sh --destination /opt/ut99 --ui-mode none \
+    --application-entry skip --desktop-shortcut skip
+
+echo "==> Creating ut99 user..."
+useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
+chown -R ut99:ut99 /opt/ut99
+
+echo "==> Configuring server..."
+INI="/opt/ut99/System/UnrealTournament.ini"
+
+# Apply server tuning via sed
+# Engine settings
+sed -i 's/^CacheSizeMegs=.*/CacheSizeMegs=64/' "$INI"
+
+# Network settings
+sed -i 's/^NetServerMaxTickRate=.*/NetServerMaxTickRate=35/' "$INI"
+sed -i 's/^MaxClientRate=.*/MaxClientRate=15000/' "$INI"
+
+# Compression for downloads
+sed -i 's/^UseCompression=.*/UseCompression=True/' "$INI"
+sed -i 's/^AllowDownloads=.*/AllowDownloads=True/' "$INI"
+
+# Server identity
+sed -i 's/^ServerName=.*/ServerName=UT99 Server/' "$INI"
+
+echo "==> Installing systemd service..."
+cat > /etc/systemd/system/ut99.service <<'SERVICE'
+[Unit]
+Description=Unreal Tournament 99 Dedicated Server
+After=network.target
+
+[Service]
+Type=simple
+User=ut99
+Group=ut99
+WorkingDirectory=/opt/ut99/System
+ExecStart=/opt/ut99/System/ucc-bin server DM-Deck16][?game=Botpack.DeathMatchPlus -nohomedir
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload
+
+echo "==> Configuring firewall..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp
+ufw allow 7777:7779/udp
+ufw --force enable
+
+echo "==> Starting UT99 server..."
+systemctl enable ut99
+systemctl start ut99
+
+echo "==> Provisioning complete"
+PROVISION
+}
+```
+
+**Key decisions in the provisioning script:**
+- Single SSH session with heredoc — atomic, fewer failure modes
+- `set -euo pipefail` inside the remote script — fail fast
+- Install `libstdc++6` — required by ucc-bin
+- `useradd || true` — idempotent
+- sed for INI edits — the installer creates the default INI, we patch specific values
+- `ufw --force reset` + `--force enable` — idempotent, non-interactive
+- `DM-Deck16][` as default map — the classic
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Implement server provisioning"
+```
+
+---
+
+### Task 5: Destroy command
+
+**Files:**
+- Modify: `ut99`
+
+**Step 1: Implement `cmd_destroy`**
+
+Replace the stub:
+
+```bash
+cmd_destroy() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+
+    if [[ -z "$droplet_id" ]]; then
+        info "No droplet '$DROPLET_NAME' found — nothing to destroy"
+        return 0
+    fi
+
+    info "Destroying droplet '$DROPLET_NAME' ($droplet_id)..."
+    doctl compute droplet delete "$droplet_id" --force
+    info "Destroyed"
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Implement destroy command"
+```
+
+---
+
+### Task 6: Start command
+
+**Files:**
+- Modify: `ut99`
+
+**Step 1: Implement `cmd_start`**
+
+Replace the stub:
+
+```bash
+cmd_start() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+    [[ -n "$droplet_id" ]] || die "No droplet '$DROPLET_NAME' found. Run: ut99 create"
+
+    local status
+    status=$(get_droplet_status "$droplet_id")
+
+    if [[ "$status" == "active" ]]; then
+        local ip
+        ip=$(get_droplet_ip "$droplet_id")
+        info "Droplet '$DROPLET_NAME' is already running at $ip"
+        echo "$ip"
+        return 0
+    fi
+
+    info "Powering on droplet '$DROPLET_NAME'..."
+    doctl compute droplet-action power-on "$droplet_id" --wait
+
+    wait_for_active "$droplet_id"
+
+    local ip
+    ip=$(get_droplet_ip "$droplet_id")
+    check_server_health "$ip"
+
+    info "UT99 server ready at ${ip}:7777"
+    echo "$ip"
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Implement start command"
+```
+
+---
+
+### Task 7: Stop command
+
+**Files:**
+- Modify: `ut99`
+
+**Step 1: Implement `cmd_stop`**
+
+Replace the stub:
+
+```bash
+cmd_stop() {
+    local droplet_id
+    droplet_id=$(find_droplet)
+    [[ -n "$droplet_id" ]] || die "No droplet '$DROPLET_NAME' found. Run: ut99 create"
+
+    local status
+    status=$(get_droplet_status "$droplet_id")
+
+    if [[ "$status" == "off" ]]; then
+        info "Droplet '$DROPLET_NAME' is already off"
+        return 0
+    fi
+
+    info "Shutting down droplet '$DROPLET_NAME'..."
+    doctl compute droplet-action shutdown "$droplet_id" --wait
+
+    wait_for_off "$droplet_id"
+    info "Droplet '$DROPLET_NAME' is off"
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add ut99
+git commit -m "Implement stop command"
+```
+
+---
+
+### Task 8: Manual end-to-end verification
+
+**No files changed — this is a testing task.**
+
+**Step 1: Run the full lifecycle**
+
+```bash
+./ut99 create      # Creates droplet, provisions, prints IP
+./ut99 stop        # Powers off
+./ut99 stop        # Should say "already off" (idempotent)
+./ut99 start       # Powers on, prints IP
+./ut99 start       # Should say "already running" (idempotent)
+./ut99 destroy     # Destroys
+./ut99 destroy     # Should say "nothing to destroy" (idempotent)
+```
+
+**Step 2: Verify game connectivity**
+
+Connect to the server IP:7777 from a UT99 client and confirm you can join.
+
+**Step 3: Fix any issues found, commit fixes**
