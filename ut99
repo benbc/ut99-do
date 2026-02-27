@@ -106,6 +106,7 @@ Commands:
   destroy  Destroy the UT99 server
   start    Start the UT99 server (power on)
   stop     Stop the UT99 server (power off)
+  maps     List available maps, or set map rotation
 USAGE
 }
 
@@ -392,6 +393,17 @@ cmd_stop() {
     info "Droplet '$DROPLET_NAME' is off"
 }
 
+cmd_maps() {
+    require_running_droplet
+
+    if [[ $# -eq 0 ]]; then
+        ssh root@"$DROPLET_IP" 'ls /opt/ut99/Maps/*.unr' \
+            | xargs -n1 basename | sed 's/\.unr$//' | sort
+    else
+        ssh root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
+    fi
+}
+
 main() {
     [[ $# -ge 1 ]] || { usage; exit 1; }
 
@@ -402,6 +414,7 @@ main() {
         destroy) cmd_destroy ;;
         start)   cmd_start ;;
         stop)    cmd_stop ;;
+        maps)    cmd_maps "${@:2}" ;;
         *)       usage; exit 1 ;;
     esac
 }
