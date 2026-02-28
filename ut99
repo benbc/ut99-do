@@ -164,6 +164,10 @@ sed -i 's/^MaxClientRate=.*/MaxClientRate=15000/' "$INI"
 sed -i 's/^UseCompression=.*/UseCompression=True/' "$INI"
 sed -i 's/^AllowDownloads=.*/AllowDownloads=True/' "$INI"
 sed -i 's/^ServerName=.*/ServerName=UT99 Server/' "$INI"
+sed -i 's/^MinPlayers=.*/MinPlayers=2/' "$INI"
+
+echo "==> Configuring bot difficulty..."
+sed -i 's/^Difficulty=.*/Difficulty=0/' /opt/ut99/System64/User.ini
 
 echo "==> Installing systemd service..."
 cat > /etc/systemd/system/ut99.service <<'SERVICE'
