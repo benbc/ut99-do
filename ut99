@@ -114,10 +114,11 @@ USAGE
 
 provision_server() {
     local ip="$1"
+    local space_url="https://${SPACE_NAME}.${REGION}.digitaloceanspaces.com"
 
     info "Provisioning UT99 server on $ip..."
 
-    ssh -o StrictHostKeyChecking=accept-new "root@${ip}" bash <<'PROVISION'
+    ssh -o StrictHostKeyChecking=accept-new "root@${ip}" bash -s -- "$space_url" <<'PROVISION'
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
@@ -139,6 +140,16 @@ echo "yes" | ./install-ut99.sh --destination /opt/ut99 --ui-mode none \
 echo "==> Creating ut99 user..."
 useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
 chown -R ut99:ut99 /opt/ut99
+
+echo "==> Downloading extra maps from DO Space..."
+curl -fsSL "$1" \
+    | grep -oP '<Key>[^<]+\.[Uu][Nn][Rr]</Key>' \
+    | sed 's/<Key>//;s/<\/Key>//' \
+    | while read -r key; do
+        echo "    Downloading $key..."
+        curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
+    done
+chown -R ut99:ut99 /opt/ut99/Maps
 
 echo "==> Configuring server..."
 INI="/opt/ut99/System64/UnrealTournament.ini"
