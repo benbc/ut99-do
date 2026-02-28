@@ -15,7 +15,12 @@ Commands:
 
 Create `ut99.conf` (see `ut99.conf.example`) and set the droplet name, region and map rotation you want.
 
-Optionally downloads custom maps from a Digtal Ocean space if the name is provided in the config file.
+Optionally downloads custom content from a Digital Ocean Space if `SPACE_NAME` is set in the config file. The Space uses two subfolders, both optional:
+
+- `maps/` — custom `.unr` map files, installed to `/opt/ut99/Maps/`
+- `plugins/` — `.u` plugin files (mutators, gametypes, etc.), installed to `/opt/ut99/System/`
+
+If a folder is absent or empty, that category is silently skipped.
 
 ## Dependencies
 
