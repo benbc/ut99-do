@@ -1,4 +1,4 @@
 DROPLET_NAME=my-server
 REGION=lon1
-SPACE_NAME=my-space
+SPACE_NAME=my-space  # optional: DO Space with extra .unr map files
 MAP_ROTATION=(DM-Deck16][ DM-Phobos][ DM-Morpheus)

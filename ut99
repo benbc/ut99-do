@@ -16,7 +16,7 @@ info() {
 source "$SCRIPT_DIR/ut99.conf"
 [[ -n "${DROPLET_NAME:-}" ]] || die "DROPLET_NAME not set in ut99.conf"
 [[ -n "${REGION:-}" ]]       || die "REGION not set in ut99.conf"
-[[ -n "${SPACE_NAME:-}" ]]   || die "SPACE_NAME not set in ut99.conf"
+# SPACE_NAME is optional — if set, extra maps are downloaded from DO Space during provisioning
 [[ ${#MAP_ROTATION[@]} -gt 0 ]] 2>/dev/null || die "MAP_ROTATION not set in ut99.conf"
 
 DROPLET_SIZE="s-1vcpu-1gb"
@@ -119,7 +119,8 @@ USAGE
 
 provision_server() {
     local ip="$1"
-    local space_url="https://${SPACE_NAME}.${REGION}.digitaloceanspaces.com"
+    local space_url=""
+    [[ -n "${SPACE_NAME:-}" ]] && space_url="https://${SPACE_NAME}.${REGION}.digitaloceanspaces.com"
 
     info "Provisioning UT99 server on $ip..."
 
@@ -147,14 +148,16 @@ echo "==> Creating ut99 user..."
 useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
 chown -R ut99:ut99 /opt/ut99
 
-echo "==> Downloading extra maps from DO Space..."
-LISTING=$(curl -fsSL "$1")
-MAPS=$(echo "$LISTING" | grep -oP '<Key>[^<>/]+\.[Uu][Nn][Rr]</Key>' | sed 's/<Key>//;s/<\/Key>//' || true)
-for key in $MAPS; do
-    echo "    Downloading $key..."
-    curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
-done
-chown -R ut99:ut99 /opt/ut99/Maps
+if [[ -n "$1" ]]; then
+    echo "==> Downloading extra maps from DO Space..."
+    LISTING=$(curl -fsSL "$1")
+    MAPS=$(echo "$LISTING" | grep -oP '<Key>[^<>/]+\.[Uu][Nn][Rr]</Key>' | sed 's/<Key>//;s/<\/Key>//' || true)
+    for key in $MAPS; do
+        echo "    Downloading $key..."
+        curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
+    done
+    chown -R ut99:ut99 /opt/ut99/Maps
+fi
 
 echo "==> Configuring server..."
 INI="/opt/ut99/System64/UnrealTournament.ini"
