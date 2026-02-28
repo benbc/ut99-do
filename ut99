@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DROPLET_NAME="ut99"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+[[ -f "$SCRIPT_DIR/ut99.conf" ]] || { echo "error: Config file not found: $SCRIPT_DIR/ut99.conf (see ut99.conf.example)" >&2; exit 1; }
+source "$SCRIPT_DIR/ut99.conf"
+
 DROPLET_SIZE="s-1vcpu-1gb"
-DROPLET_REGION="lon1"
 DROPLET_IMAGE="ubuntu-24-04-x64"
 
 die() {
@@ -300,7 +302,7 @@ cmd_create() {
     info "Creating droplet '$DROPLET_NAME'..."
     droplet_id=$(doctl compute droplet create "$DROPLET_NAME" \
         --size "$DROPLET_SIZE" \
-        --region "$DROPLET_REGION" \
+        --region "$REGION" \
         --image "$DROPLET_IMAGE" \
         --ssh-keys "$ssh_keys" \
         --format ID \
