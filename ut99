@@ -339,6 +339,8 @@ cmd_create() {
     wait_for_ssh "$ip"
     provision_server "$ip"
     check_server_health "$ip"
+
+    info "Setting map rotation..."
     cmd_maps "${MAP_ROTATION[@]}"
 
     info "UT99 server ready at ${ip}:7777"
