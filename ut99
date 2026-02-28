@@ -130,6 +130,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Waiting for apt lock (unattended-upgrades may be running)..."
 apt-get -o DPkg::Lock::Timeout=120 update -qq
+apt-get -o DPkg::Lock::Timeout=120 upgrade -y -qq > /dev/null
 apt-get -o DPkg::Lock::Timeout=120 install -y -qq libstdc++6 ufw p7zip-full jq lbzip2 > /dev/null
 
 echo "==> Downloading UT99 installer..."
