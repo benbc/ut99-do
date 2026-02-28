@@ -142,13 +142,12 @@ useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
 chown -R ut99:ut99 /opt/ut99
 
 echo "==> Downloading extra maps from DO Space..."
-curl -fsSL "$1" \
-    | grep -oP '<Key>[^<]+\.[Uu][Nn][Rr]</Key>' \
-    | sed 's/<Key>//;s/<\/Key>//' \
-    | while read -r key; do
-        echo "    Downloading $key..."
-        curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
-    done
+LISTING=$(curl -fsSL "$1")
+MAPS=$(echo "$LISTING" | grep -oP '<Key>[^<>/]+\.[Uu][Nn][Rr]</Key>' | sed 's/<Key>//;s/<\/Key>//' || true)
+for key in $MAPS; do
+    echo "    Downloading $key..."
+    curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
+done
 chown -R ut99:ut99 /opt/ut99/Maps
 
 echo "==> Configuring server..."
