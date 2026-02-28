@@ -365,6 +365,14 @@ cmd_destroy() {
         fi
         die "Failed to destroy droplet $droplet_id"
     fi
+
+    info "Waiting for droplet to be removed..."
+    for i in $(seq 1 60); do
+        [[ -z "$(find_droplet)" ]] && break
+        sleep 5
+    done
+    [[ -z "$(find_droplet)" ]] || die "Timed out waiting for droplet to be removed"
+
     info "Destroyed"
 }
 
