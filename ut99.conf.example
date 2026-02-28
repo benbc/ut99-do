@@ -1,3 +1,4 @@
 DROPLET_NAME=my-server
 REGION=lon1
 SPACE_NAME=my-space
+MAP_ROTATION=(DM-Deck16][ DM-Phobos][ DM-Morpheus)

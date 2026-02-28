@@ -17,6 +17,7 @@ source "$SCRIPT_DIR/ut99.conf"
 [[ -n "${DROPLET_NAME:-}" ]] || die "DROPLET_NAME not set in ut99.conf"
 [[ -n "${REGION:-}" ]]       || die "REGION not set in ut99.conf"
 [[ -n "${SPACE_NAME:-}" ]]   || die "SPACE_NAME not set in ut99.conf"
+[[ ${#MAP_ROTATION[@]} -gt 0 ]] 2>/dev/null || die "MAP_ROTATION not set in ut99.conf"
 
 DROPLET_SIZE="s-1vcpu-1gb"
 DROPLET_IMAGE="ubuntu-24-04-x64"
@@ -334,6 +335,7 @@ cmd_create() {
     wait_for_ssh "$ip"
     provision_server "$ip"
     check_server_health "$ip"
+    cmd_maps "${MAP_ROTATION[@]}"
 
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
