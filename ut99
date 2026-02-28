@@ -2,14 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-[[ -f "$SCRIPT_DIR/ut99.conf" ]] || { echo "error: Config file not found: $SCRIPT_DIR/ut99.conf (see ut99.conf.example)" >&2; exit 1; }
-source "$SCRIPT_DIR/ut99.conf"
-[[ -n "${DROPLET_NAME:-}" ]] || { echo "error: DROPLET_NAME not set in ut99.conf" >&2; exit 1; }
-[[ -n "${REGION:-}" ]]       || { echo "error: REGION not set in ut99.conf" >&2; exit 1; }
-[[ -n "${SPACE_NAME:-}" ]]   || { echo "error: SPACE_NAME not set in ut99.conf" >&2; exit 1; }
-
-DROPLET_SIZE="s-1vcpu-1gb"
-DROPLET_IMAGE="ubuntu-24-04-x64"
 
 die() {
     echo "error: $*" >&2
@@ -19,6 +11,15 @@ die() {
 info() {
     echo "==> $*"
 }
+
+[[ -f "$SCRIPT_DIR/ut99.conf" ]] || die "Config file not found: $SCRIPT_DIR/ut99.conf (see ut99.conf.example)"
+source "$SCRIPT_DIR/ut99.conf"
+[[ -n "${DROPLET_NAME:-}" ]] || die "DROPLET_NAME not set in ut99.conf"
+[[ -n "${REGION:-}" ]]       || die "REGION not set in ut99.conf"
+[[ -n "${SPACE_NAME:-}" ]]   || die "SPACE_NAME not set in ut99.conf"
+
+DROPLET_SIZE="s-1vcpu-1gb"
+DROPLET_IMAGE="ubuntu-24-04-x64"
 
 check_deps() {
     command -v doctl >/dev/null 2>&1 || die "doctl not found. Install from https://docs.digitalocean.com/reference/doctl/"
