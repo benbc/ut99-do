@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [[ -f "$SCRIPT_DIR/ut99.conf" ]] || { echo "error: Config file not found: $SCRIPT_DIR/ut99.conf (see ut99.conf.example)" >&2; exit 1; }
 source "$SCRIPT_DIR/ut99.conf"
+[[ -n "${DROPLET_NAME:-}" ]] || { echo "error: DROPLET_NAME not set in ut99.conf" >&2; exit 1; }
+[[ -n "${REGION:-}" ]]       || { echo "error: REGION not set in ut99.conf" >&2; exit 1; }
+[[ -n "${SPACE_NAME:-}" ]]   || { echo "error: SPACE_NAME not set in ut99.conf" >&2; exit 1; }
 
 DROPLET_SIZE="s-1vcpu-1gb"
 DROPLET_IMAGE="ubuntu-24-04-x64"
