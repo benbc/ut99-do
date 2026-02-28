@@ -1,2 +1,3 @@
 DROPLET_NAME=my-server
 REGION=lon1
+SPACE_NAME=my-space
