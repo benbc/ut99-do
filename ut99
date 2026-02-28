@@ -148,15 +148,23 @@ echo "==> Creating ut99 user..."
 useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
 chown -R ut99:ut99 /opt/ut99
 
-if [[ -n "$1" ]]; then
-    echo "==> Downloading extra maps from DO Space..."
-    LISTING=$(curl -fsSL "$1")
-    MAPS=$(echo "$LISTING" | grep -oP '<Key>[^<>/]+\.[Uu][Nn][Rr]</Key>' | sed 's/<Key>//;s/<\/Key>//' || true)
-    for key in $MAPS; do
+download_from_space() {
+    local space_url="$1" folder="$2" dest="$3"
+    local listing keys
+    listing=$(curl -fsSL "${space_url}?prefix=${folder}/")
+    keys=$(echo "$listing" | grep -oP "<Key>${folder}/[^<]+</Key>" | sed "s/<Key>${folder}\///;s/<\/Key>//" || true)
+    [[ -n "$keys" ]] || return 0
+    echo "==> Downloading ${folder} from DO Space..."
+    for key in $keys; do
         echo "    Downloading $key..."
-        curl -fsSL -o "/opt/ut99/Maps/$key" "$1/$key"
+        curl -fsSL -o "${dest}/${key}" "${space_url}/${folder}/${key}"
     done
-    chown -R ut99:ut99 /opt/ut99/Maps
+    chown -R ut99:ut99 "$dest"
+}
+
+if [[ -n "$1" ]]; then
+    download_from_space "$1" "maps" "/opt/ut99/Maps"
+    download_from_space "$1" "plugins" "/opt/ut99/System"
 fi
 
 echo "==> Configuring server..."
