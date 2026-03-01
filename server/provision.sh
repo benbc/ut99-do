@@ -36,6 +36,13 @@ download_from_space() {
     chown -R ut99:ut99 "$dest"
 }
 
+echo "==> First-run initialization..."
+cp "$SCRIPT_DIR/ut99.service" /etc/systemd/system/ut99.service
+systemctl daemon-reload
+systemctl start ut99
+sleep 3
+systemctl stop ut99
+
 if [[ -n "${1:-}" ]]; then
     download_from_space "$1" "maps" "/opt/ut99/Maps"
     download_from_space "$1" "plugins" "/opt/ut99/System"
@@ -59,9 +66,6 @@ sed -i 's/^FragLimit=.*/FragLimit=10/' "$INI"
 sed -i 's/^bLocalLog=.*/bLocalLog=False/' "$INI"
 sed -i 's/^bBatchLocal=.*/bBatchLocal=False/' "$INI"
 sed -i 's/^Difficulty=.*/Difficulty=0/' /opt/ut99/System64/User.ini
-
-cp "$SCRIPT_DIR/ut99.service" /etc/systemd/system/ut99.service
-systemctl daemon-reload
 
 ufw --force reset > /dev/null
 ufw default deny incoming > /dev/null

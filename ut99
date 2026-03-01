@@ -259,7 +259,6 @@ cmd_stop() {
 
 cmd_ssh() {
     require_running_droplet
-    [[ $# -ge 1 ]] || die "Usage: ut99 ssh <command>"
     ssh root@"$DROPLET_IP" "$@"
 }
 
