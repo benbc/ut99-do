@@ -43,6 +43,11 @@ if [[ -n "${1:-}" ]]; then
     download_from_space "$1" "plugins" "/opt/ut99/System"
 fi
 
+echo "==> Moving maps to unused/..."
+mkdir -p /opt/ut99/Maps/unused
+mv /opt/ut99/Maps/*.unr /opt/ut99/Maps/unused/ 2>/dev/null || true
+chown -R ut99:ut99 /opt/ut99/Maps/unused
+
 echo "==> Configuring server..."
 INI="/opt/ut99/System64/UnrealTournament.ini"
 
@@ -53,6 +58,9 @@ sed -i 's/^UseCompression=.*/UseCompression=True/' "$INI"
 sed -i 's/^AllowDownloads=.*/AllowDownloads=True/' "$INI"
 sed -i 's/^ServerName=.*/ServerName=UT99 Server/' "$INI"
 sed -i 's/^MinPlayers=.*/MinPlayers=2/' "$INI"
+sed -i 's/^FragLimit=.*/FragLimit=10/' "$INI"
+sed -i 's/^bLocalLog=.*/bLocalLog=False/' "$INI"
+sed -i 's/^bBatchLocal=.*/bBatchLocal=False/' "$INI"
 
 echo "==> Configuring bot difficulty..."
 sed -i 's/^Difficulty=.*/Difficulty=0/' /opt/ut99/System64/User.ini
