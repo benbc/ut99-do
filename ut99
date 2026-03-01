@@ -114,6 +114,7 @@ Commands:
   start    Start the UT99 server (power on)
   stop     Stop the UT99 server (power off)
   maps     List available maps, or set map rotation
+  ssh      Run a command on the server
 USAGE
 }
 
@@ -255,6 +256,12 @@ cmd_stop() {
     info "Droplet '$DROPLET_NAME' is off"
 }
 
+cmd_ssh() {
+    require_running_droplet
+    [[ $# -ge 1 ]] || die "Usage: ut99 ssh <command>"
+    ssh root@"$DROPLET_IP" "$@"
+}
+
 cmd_maps() {
     require_running_droplet
 
@@ -276,6 +283,7 @@ main() {
         start)   cmd_start ;;
         stop)    cmd_stop ;;
         maps)    cmd_maps "${@:2}" ;;
+        ssh)     cmd_ssh "${@:2}" ;;
         *)       usage; exit 1 ;;
     esac
 }
