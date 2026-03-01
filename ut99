@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/ut99.conf"
 
 DROPLET_SIZE="s-1vcpu-1gb"
 DROPLET_IMAGE="ubuntu-24-04-x64"
+SSH_OPTS="-o StrictHostKeyChecking=accept-new"
 
 check_deps() {
     command -v doctl >/dev/null 2>&1 || die "doctl not found. Install from https://docs.digitalocean.com/reference/doctl/"
@@ -38,6 +39,7 @@ get_droplet_ip() {
     local droplet_id="$1"
     doctl compute droplet get "$droplet_id" --format PublicIPv4 --no-header
 }
+
 
 get_droplet_status() {
     local droplet_id="$1"
@@ -71,7 +73,7 @@ wait_for_ssh() {
     local ip="$1"
     info "Waiting for SSH to become available..."
     for i in $(seq 1 60); do
-        if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new \
+        if ssh -o ConnectTimeout=2 $SSH_OPTS \
                "root@${ip}" true 2>/dev/null; then
             return 0
         fi
@@ -126,8 +128,8 @@ provision_server() {
 
     info "Provisioning UT99 server on $ip..."
 
-    scp -o StrictHostKeyChecking=accept-new -r "$SCRIPT_DIR/server" "root@${ip}:/tmp/ut99-server"
-    ssh -o StrictHostKeyChecking=accept-new "root@${ip}" /tmp/ut99-server/provision.sh "$space_url"
+    scp $SSH_OPTS -r "$SCRIPT_DIR/server" "root@${ip}:/tmp/ut99-server"
+    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' > /tmp/provision.log 2>&1"
 }
 
 cmd_create() {
@@ -170,6 +172,11 @@ cmd_create() {
 
     wait_for_ssh "$ip"
     provision_server "$ip"
+
+    info "Rebooting to apply updates..."
+    ssh $SSH_OPTS "root@${ip}" reboot || true
+    sleep 10
+    wait_for_ssh "$ip"
 
     info "Setting map rotation..."
     cmd_maps "${MAP_ROTATION[@]}"
@@ -259,22 +266,22 @@ cmd_stop() {
 
 cmd_ssh() {
     require_running_droplet
-    ssh root@"$DROPLET_IP" "$@"
+    ssh $SSH_OPTS root@"$DROPLET_IP" "$@"
 }
 
 cmd_scp() {
     require_running_droplet
     [[ $# -eq 2 ]] || die "Usage: ut99 scp <local-path> <remote-path>"
-    scp "$1" root@"$DROPLET_IP":"$2"
+    scp $SSH_OPTS "$1" root@"$DROPLET_IP":"$2"
 }
 
 cmd_maps() {
     require_running_droplet
 
     if [[ $# -eq 0 ]]; then
-        ssh root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/unused/*.unr; do basename "$f" .unr; done' | sort
+        ssh $SSH_OPTS root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/unused/*.unr; do basename "$f" .unr; done' | sort
     else
-        ssh root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
+        ssh $SSH_OPTS root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
     fi
 }
 

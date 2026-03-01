@@ -4,12 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 export DEBIAN_FRONTEND=noninteractive
-export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
 
 echo "==> Installing packages..."
 apt-get -o DPkg::Lock::Timeout=120 update -qq
-apt-get -o DPkg::Lock::Timeout=120 upgrade -y -qq
+apt-get -o DPkg::Lock::Timeout=120 dist-upgrade -y -qq
 apt-get -o DPkg::Lock::Timeout=120 install -y -qq libstdc++6 ufw p7zip-full jq lbzip2
+apt-get -o DPkg::Lock::Timeout=120 autoremove -y -qq
 
 echo "==> Installing UT99..."
 cd /tmp

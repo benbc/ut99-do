@@ -24,6 +24,15 @@ If a folder is absent or empty, that category is silently skipped.
 
 ## Dependencies
 
-- `doctl` (with authentication set up)
+- `doctl` (with authentication set up — see below)
+- An SSH key registered in your DigitalOcean account (`doctl compute ssh-key create`)
 - `nc` (netcat)
 - `ssh`
+
+### DigitalOcean PAT permissions
+
+Create a custom Personal Access Token at https://cloud.digitalocean.com/account/api/tokens with these scopes:
+
+- **account** — read
+- **droplet** — create, read, delete
+- **ssh_key** — read
