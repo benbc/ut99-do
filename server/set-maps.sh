@@ -8,12 +8,14 @@ UNUSED_DIR="$MAPS_DIR/unused"
 INI="/opt/ut99/System64/UnrealTournament.ini"
 SERVICE="/etc/systemd/system/ut99.service"
 
-# Validate all maps exist in unused/ (case-insensitive)
+# Validate all maps exist in unused/ (case-insensitive) and resolve actual filenames
+resolved_maps=()
 for map in "$@"; do
     found=false
     for f in "$UNUSED_DIR"/*.unr; do
         basename=$(basename "$f" .unr)
         if [[ "${basename,,}" == "${map,,}" ]]; then
+            resolved_maps+=("$basename")
             found=true
             break
         fi
@@ -29,7 +31,7 @@ systemctl stop ut99
 
 echo "==> Updating maps..."
 rm -f "$MAPS_DIR"/*.unr
-for map in "$@"; do
+for map in "${resolved_maps[@]}"; do
     cp "$UNUSED_DIR"/"$map".unr "$MAPS_DIR"/
 done
 chown ut99:ut99 "$MAPS_DIR"/*.unr
@@ -47,7 +49,7 @@ fi
 {
     echo "[Botpack.TDMmaplist]"
     index=0
-    for map in "$@"; do
+    for map in "${resolved_maps[@]}"; do
         echo "Maps[$index]=$map.unr"
         ((index += 1))
     done
@@ -63,7 +65,7 @@ chown ut99:ut99 "$INI"
 # Use the last map for ExecStart. UT runs the command-line map first, then proceeds
 # through the map list in order. Using the last map avoids seeing it twice on the
 # initial rotation.
-last_map="${@: -1}"
+last_map="${resolved_maps[-1]}"
 sed -i "s|^\(ExecStart=/opt/ut99/System64/ucc-bin server \)[^ ?]*|\1$last_map|" "$SERVICE"
 
 systemctl daemon-reload
@@ -71,4 +73,4 @@ systemctl daemon-reload
 echo "==> Starting UT99 server..."
 systemctl start ut99
 
-echo "Map rotation set to: $*"
+echo "Map rotation set to: ${resolved_maps[*]}"
