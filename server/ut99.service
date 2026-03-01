@@ -1,0 +1,17 @@
+[Unit]
+Description=Unreal Tournament 99 Dedicated Server
+After=network.target
+
+[Service]
+Type=simple
+User=ut99
+Group=ut99
+WorkingDirectory=/opt/ut99/System64
+ExecStart=/opt/ut99/System64/ucc-bin server DM-Deck16][?game=Botpack.DeathMatchPlus -nohomedir
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
