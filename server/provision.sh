@@ -8,8 +8,8 @@ export NEEDRESTART_MODE=a
 
 echo "==> Installing packages..."
 apt-get -o DPkg::Lock::Timeout=120 update -qq
-apt-get -o DPkg::Lock::Timeout=120 upgrade -y -qq > /dev/null 2>&1
-apt-get -o DPkg::Lock::Timeout=120 install -y -qq libstdc++6 ufw p7zip-full jq lbzip2 > /dev/null 2>&1
+apt-get -o DPkg::Lock::Timeout=120 upgrade -y -qq
+apt-get -o DPkg::Lock::Timeout=120 install -y -qq libstdc++6 ufw p7zip-full jq lbzip2
 
 echo "==> Installing UT99..."
 cd /tmp
@@ -17,7 +17,7 @@ curl -fsSL -o install-ut99.sh \
     "https://raw.githubusercontent.com/OldUnreal/FullGameInstallers/master/Linux/install-ut99.sh"
 chmod +x install-ut99.sh
 echo "yes" | ./install-ut99.sh --destination /opt/ut99 --ui-mode none \
-    --application-entry skip --desktop-shortcut skip > /dev/null 2>&1
+    --application-entry skip --desktop-shortcut skip > /dev/null
 
 useradd --system --shell /usr/sbin/nologin --home-dir /opt/ut99 ut99 || true
 chown -R ut99:ut99 /opt/ut99
@@ -73,6 +73,6 @@ ufw --force enable > /dev/null
 cp "$SCRIPT_DIR/set-maps.sh" /opt/ut99/set-maps.sh
 chmod +x /opt/ut99/set-maps.sh
 
-systemctl enable ut99 > /dev/null 2>&1
+systemctl enable ut99 > /dev/null
 
 echo "==> Provisioning complete"
