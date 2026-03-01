@@ -115,6 +115,7 @@ Commands:
   stop     Stop the UT99 server (power off)
   maps     List available maps, or set map rotation
   ssh      Run a command on the server
+  scp      Copy a file to the server
 USAGE
 }
 
@@ -169,11 +170,11 @@ cmd_create() {
 
     wait_for_ssh "$ip"
     provision_server "$ip"
-    check_server_health "$ip"
 
     info "Setting map rotation..."
     cmd_maps "${MAP_ROTATION[@]}"
 
+    check_server_health "$ip"
     info "UT99 server ready at ${ip}:7777"
     echo "$ip"
 }
@@ -262,6 +263,12 @@ cmd_ssh() {
     ssh root@"$DROPLET_IP" "$@"
 }
 
+cmd_scp() {
+    require_running_droplet
+    [[ $# -eq 2 ]] || die "Usage: ut99 scp <local-path> <remote-path>"
+    scp "$1" root@"$DROPLET_IP":"$2"
+}
+
 cmd_maps() {
     require_running_droplet
 
@@ -284,6 +291,7 @@ main() {
         stop)    cmd_stop ;;
         maps)    cmd_maps "${@:2}" ;;
         ssh)     cmd_ssh "${@:2}" ;;
+        scp)     cmd_scp "${@:2}" ;;
         *)       usage; exit 1 ;;
     esac
 }

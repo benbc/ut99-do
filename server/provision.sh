@@ -81,8 +81,7 @@ echo "==> Installing set-maps.sh helper..."
 cp "$SCRIPT_DIR/set-maps.sh" /opt/ut99/set-maps.sh
 chmod +x /opt/ut99/set-maps.sh
 
-echo "==> Starting UT99 server..."
+echo "==> Enabling UT99 server..."
 systemctl enable ut99
-systemctl start ut99
 
 echo "==> Provisioning complete"
