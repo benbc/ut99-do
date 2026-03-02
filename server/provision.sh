@@ -64,7 +64,10 @@ sed -i 's/^AllowDownloads=.*/AllowDownloads=True/' "$INI"
 sed -i 's/^ServerName=.*/ServerName=UT99 Server/' "$INI"
 sed -i 's/^MinPlayers=.*/MinPlayers=2/' "$INI"
 sed -i 's/^FragLimit=.*/FragLimit=10/' "$INI"
+sed -i 's/^bMultiWeaponStay=.*/bMultiWeaponStay=False/' "$INI"
+sed -i 's/^RestartWait=.*/RestartWait=8/' "$INI"
 sed -i 's/^bLocalLog=.*/bLocalLog=False/' "$INI"
+sed -i 's/^bWorldLog=.*/bWorldLog=False/' "$INI"
 sed -i 's/^bBatchLocal=.*/bBatchLocal=False/' "$INI"
 sed -i 's/^Difficulty=.*/Difficulty=0/' /opt/ut99/System64/User.ini
 
