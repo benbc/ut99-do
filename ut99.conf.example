@@ -1,5 +1,7 @@
 DROPLET_NAME=my-server
 REGION=lon1
-SPACE_NAME=my-space  # optional: DO Space with custom maps and plugins
+SPACE_NAME=my-space        # optional: DO Space with custom maps and plugins
+SPACE_ACCESS_KEY=my-key    # required for map-add
+SPACE_SECRET_KEY=my-secret # required for map-add
 
 MAP_ROTATION=(DM-Deck16][ DM-Phobos][ DM-Morpheus)

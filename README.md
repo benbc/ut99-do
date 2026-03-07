@@ -11,6 +11,7 @@ Commands:
   start    Start the UT99 server (power on)
   stop     Stop the UT99 server (power off)
   maps     List available maps, or set map rotation
+  map-add  Add a map to the server and DO Space
 ```
 
 Create `ut99.conf` (see `ut99.conf.example`) and set the droplet name, region and map rotation you want.
@@ -28,6 +29,7 @@ If a folder is absent or empty, that category is silently skipped.
 - An SSH key registered in your DigitalOcean account (`doctl compute ssh-key create`)
 - `nc` (netcat)
 - `ssh`
+- `s3cmd` (only required for `map-add`)
 
 ### DigitalOcean PAT permissions
 
@@ -36,3 +38,7 @@ Create a custom Personal Access Token at https://cloud.digitalocean.com/account/
 - **account** — read
 - **droplet** — create, read, delete
 - **ssh_key** — read
+
+### Spaces API keys
+
+`map-add` uploads to your DO Space using a separate Spaces API key pair (not the PAT). Generate one at https://cloud.digitalocean.com/account/api/tokens under **Spaces Keys**, then set `SPACE_ACCESS_KEY` and `SPACE_SECRET_KEY` in `ut99.conf`.

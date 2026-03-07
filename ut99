@@ -116,6 +116,7 @@ Commands:
   start    Start the UT99 server (power on)
   stop     Stop the UT99 server (power off)
   maps     List available maps, or set map rotation
+  map-add  Add a map to the server and DO Space
   ssh      Run a command on the server
   scp      Copy a file to the server
 USAGE
@@ -275,6 +276,34 @@ cmd_scp() {
     scp $SSH_OPTS "$1" root@"$DROPLET_IP":"$2"
 }
 
+cmd_map_add() {
+    local file="$1"
+    [[ -f "$file" ]] || die "File not found: $file"
+    [[ "$file" == *.unr ]] || die "File must have .unr extension"
+    [[ -n "${SPACE_NAME:-}" ]] || die "SPACE_NAME not set in ut99.conf"
+    [[ -n "${SPACE_ACCESS_KEY:-}" ]] || die "SPACE_ACCESS_KEY not set in ut99.conf"
+    [[ -n "${SPACE_SECRET_KEY:-}" ]] || die "SPACE_SECRET_KEY not set in ut99.conf"
+    command -v s3cmd >/dev/null 2>&1 || die "s3cmd not found"
+
+    local filename
+    filename=$(basename "$file")
+
+    require_running_droplet
+
+    info "Uploading $filename to DO Space..."
+    s3cmd put "$file" "s3://${SPACE_NAME}/maps/${filename}" \
+        --access_key="$SPACE_ACCESS_KEY" \
+        --secret_key="$SPACE_SECRET_KEY" \
+        --host="${REGION}.digitaloceanspaces.com" \
+        --host-bucket="%(bucket)s.${REGION}.digitaloceanspaces.com" \
+        --no-progress
+
+    info "Copying $filename to server..."
+    scp $SSH_OPTS "$file" "root@${DROPLET_IP}:/opt/ut99/Maps/${filename}"
+
+    info "Map $filename added"
+}
+
 cmd_maps() {
     require_running_droplet
 
@@ -295,6 +324,7 @@ main() {
         destroy) cmd_destroy ;;
         start)   cmd_start ;;
         stop)    cmd_stop ;;
+        map-add) cmd_map_add "${@:2}" ;;
         maps)    cmd_maps "${@:2}" ;;
         ssh)     cmd_ssh "${@:2}" ;;
         scp)     cmd_scp "${@:2}" ;;
