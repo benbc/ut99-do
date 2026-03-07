@@ -279,7 +279,7 @@ cmd_maps() {
     require_running_droplet
 
     if [[ $# -eq 0 ]]; then
-        ssh $SSH_OPTS root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/unused/*.unr; do basename "$f" .unr; done' | sort
+        ssh $SSH_OPTS root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/*.unr; do basename "$f" .unr; done' | sort
     else
         ssh $SSH_OPTS root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
     fi

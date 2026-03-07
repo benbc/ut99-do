@@ -4,15 +4,14 @@ set -euo pipefail
 [[ $# -ge 1 ]] || { echo "Usage: set-maps.sh MAP1 [MAP2 ...]" >&2; exit 1; }
 
 MAPS_DIR="/opt/ut99/Maps"
-UNUSED_DIR="$MAPS_DIR/unused"
 INI="/opt/ut99/System64/UnrealTournament.ini"
 SERVICE="/etc/systemd/system/ut99.service"
 
-# Validate all maps exist in unused/ (case-insensitive) and resolve actual filenames
+# Validate all maps exist (case-insensitive) and resolve actual filenames
 resolved_maps=()
 for map in "$@"; do
     found=false
-    for f in "$UNUSED_DIR"/*.unr; do
+    for f in "$MAPS_DIR"/*.unr; do
         basename=$(basename "$f" .unr)
         if [[ "${basename,,}" == "${map,,}" ]]; then
             resolved_maps+=("$basename")
@@ -21,20 +20,13 @@ for map in "$@"; do
         fi
     done
     if [[ "$found" == "false" ]]; then
-        echo "error: map '$map' not found in $UNUSED_DIR" >&2
+        echo "error: map '$map' not found in $MAPS_DIR" >&2
         exit 1
     fi
 done
 
 echo "==> Stopping UT99 server..."
 systemctl stop ut99
-
-echo "==> Updating maps..."
-rm -f "$MAPS_DIR"/*.unr
-for map in "${resolved_maps[@]}"; do
-    cp "$UNUSED_DIR"/"$map".unr "$MAPS_DIR"/
-done
-chown ut99:ut99 "$MAPS_DIR"/*.unr
 
 echo "==> Updating map rotation..."
 

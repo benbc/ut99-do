@@ -49,10 +49,6 @@ if [[ -n "${1:-}" ]]; then
     download_from_space "$1" "plugins" "/opt/ut99/System"
 fi
 
-mkdir -p /opt/ut99/Maps/unused
-mv /opt/ut99/Maps/*.unr /opt/ut99/Maps/unused/ 2>/dev/null || true
-chown -R ut99:ut99 /opt/ut99/Maps/unused
-
 echo "==> Configuring server..."
 INI="/opt/ut99/System64/UnrealTournament.ini"
 
