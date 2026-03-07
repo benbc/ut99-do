@@ -7,23 +7,11 @@ MAPS_DIR="/opt/ut99/Maps"
 INI="/opt/ut99/System64/UnrealTournament.ini"
 SERVICE="/etc/systemd/system/ut99.service"
 
-# Validate all maps exist (case-insensitive) and resolve actual filenames
-resolved_maps=()
+# Validate all maps exist
 for map in "$@"; do
-    found=false
-    for f in "$MAPS_DIR"/*.unr; do
-        basename=$(basename "$f" .unr)
-        if [[ "${basename,,}" == "${map,,}" ]]; then
-            resolved_maps+=("$basename")
-            found=true
-            break
-        fi
-    done
-    if [[ "$found" == "false" ]]; then
-        echo "error: map '$map' not found in $MAPS_DIR" >&2
-        exit 1
-    fi
+    [[ -f "$MAPS_DIR/$map.unr" ]] || { echo "error: map '$map' not found in $MAPS_DIR" >&2; exit 1; }
 done
+resolved_maps=("$@")
 
 echo "==> Stopping UT99 server..."
 systemctl stop ut99
