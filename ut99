@@ -108,6 +108,13 @@ check_server_health() {
     die "UT99 server on $ip:7778 is not responding"
 }
 
+cmd_info() {
+    require_running_droplet
+    info "Server info"
+    echo "IP:        $DROPLET_IP"
+    echo "Web admin: https://${ADMIN_DOMAIN}/ServerAdmin/"
+}
+
 usage() {
     cat <<'USAGE'
 Usage: ut99 <command>
@@ -117,7 +124,7 @@ Commands:
   destroy  Destroy the UT99 server
   start    Start the UT99 server (power on)
   stop     Stop the UT99 server (power off)
-  maps     List available maps, or set map rotation
+  info     Print server IP and web admin URL
   map-add  Add a map to the server and DO Space
   ssh      Run a command on the server
   scp      Copy a file to the server
@@ -326,6 +333,7 @@ main() {
         destroy) cmd_destroy ;;
         start)   cmd_start ;;
         stop)    cmd_stop ;;
+        info)    cmd_info ;;
         map-add) cmd_map_add "${@:2}" ;;
         maps)    cmd_maps "${@:2}" ;;
         ssh)     cmd_ssh "${@:2}" ;;
