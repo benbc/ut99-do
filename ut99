@@ -136,10 +136,11 @@ provision_server() {
     local space_url=""
     [[ -n "${SPACE_NAME:-}" ]] && space_url="https://${SPACE_NAME}.${REGION}.digitaloceanspaces.com"
 
-    info "Provisioning UT99 server on $ip..."
+    local log="$SCRIPT_DIR/provision.log"
+    info "Provisioning UT99 server on $ip (logging to $log)..."
 
     scp $SSH_OPTS -r "$SCRIPT_DIR/server" "root@${ip}:/tmp/ut99-server"
-    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' '$DOMAIN' '$WEBADMIN_PASSWORD' '$INGAME_ADMIN_PASSWORD'"
+    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' '$DOMAIN' '$WEBADMIN_PASSWORD' '$INGAME_ADMIN_PASSWORD'" 2>&1 | tee "$log"
 }
 
 cmd_create() {
