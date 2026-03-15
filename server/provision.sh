@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_SUSPEND=1
 
-ADMIN_DOMAIN="${2:-}"
+DOMAIN="${2:-}"
 WEBADMIN_PASSWORD="${3:-}"
 INGAME_ADMIN_PASSWORD="${4:-}"
 
@@ -115,7 +115,7 @@ apt-get -o DPkg::Lock::Timeout=120 install -y -qq caddy
 
 echo "==> Configuring Caddy..."
 cat > /etc/caddy/Caddyfile <<EOF
-${ADMIN_DOMAIN} {
+${DOMAIN} {
     redir / /ServerAdmin/ permanent
     reverse_proxy localhost:5080
 }

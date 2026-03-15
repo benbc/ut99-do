@@ -16,7 +16,7 @@ info() {
 source "$SCRIPT_DIR/ut99.conf"
 [[ -n "${DROPLET_NAME:-}" ]]          || die "DROPLET_NAME not set in ut99.conf"
 [[ -n "${REGION:-}" ]]                || die "REGION not set in ut99.conf"
-[[ -n "${ADMIN_DOMAIN:-}" ]]          || die "ADMIN_DOMAIN not set in ut99.conf"
+[[ -n "${DOMAIN:-}" ]]                || die "DOMAIN not set in ut99.conf"
 [[ -n "${WEBADMIN_PASSWORD:-}" ]]     || die "WEBADMIN_PASSWORD not set in ut99.conf"
 [[ -n "${INGAME_ADMIN_PASSWORD:-}" ]] || die "INGAME_ADMIN_PASSWORD not set in ut99.conf"
 # SPACE_NAME is optional — if set, extra maps are downloaded from DO Space during provisioning
@@ -112,7 +112,7 @@ cmd_info() {
     require_running_droplet
     info "Server info"
     echo "IP:        $DROPLET_IP"
-    echo "Web admin: https://${ADMIN_DOMAIN}/ServerAdmin/"
+    echo "Web admin: https://${DOMAIN}/ServerAdmin/"
 }
 
 usage() {
@@ -139,7 +139,7 @@ provision_server() {
     info "Provisioning UT99 server on $ip..."
 
     scp $SSH_OPTS -r "$SCRIPT_DIR/server" "root@${ip}:/tmp/ut99-server"
-    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' '$ADMIN_DOMAIN' '$WEBADMIN_PASSWORD' '$INGAME_ADMIN_PASSWORD'"
+    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' '$DOMAIN' '$WEBADMIN_PASSWORD' '$INGAME_ADMIN_PASSWORD'"
 }
 
 cmd_create() {

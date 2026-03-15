@@ -1,6 +1,6 @@
 DROPLET_NAME=my-server
 REGION=lon1
-ADMIN_DOMAIN=ut-admin.yourdomain.com
+DOMAIN=ut-admin.yourdomain.com
 WEBADMIN_PASSWORD=changeme
 INGAME_ADMIN_PASSWORD=changeme
 
