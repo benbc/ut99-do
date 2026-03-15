@@ -6,6 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_SUSPEND=1
 
+ADMIN_DOMAIN="${2:-}"
+WEBADMIN_PASSWORD="${3:-}"
+INGAME_ADMIN_PASSWORD="${4:-}"
+
 echo "==> Installing packages..."
 apt-get -o DPkg::Lock::Timeout=120 update -qq
 apt-get -o DPkg::Lock::Timeout=120 dist-upgrade -y -qq
@@ -67,15 +71,57 @@ sed -i 's/^bWorldLog=.*/bWorldLog=False/' "$INI"
 sed -i 's/^bBatchLocal=.*/bBatchLocal=False/' "$INI"
 sed -i 's/^Difficulty=.*/Difficulty=0/' /opt/ut99/System64/User.ini
 
+echo "==> Configuring web admin..."
+cat >> "$INI" <<EOF
+
+[UWeb.WebServer]
+Applications[0]=UTServerAdmin.UTServerAdmin
+ApplicationPaths[0]=/ServerAdmin
+Applications[1]=UTServerAdmin.UTImageServer
+ApplicationPaths[1]=/images
+DefaultApplication=0
+bEnabled=True
+ListenPort=5080
+MaxConnections=30
+
+[UTServerAdmin.UTServerAdmin]
+AdminUsername=admin
+AdminPassword=${WEBADMIN_PASSWORD}
+
+[Engine.GameInfo]
+AdminPassword=${INGAME_ADMIN_PASSWORD}
+LoginDelaySeconds=1.000000
+MaxLoginAttempts=50
+EOF
+chmod 600 "$INI"
+
 ufw --force reset > /dev/null
 ufw default deny incoming > /dev/null
 ufw default allow outgoing > /dev/null
 ufw allow 22/tcp > /dev/null
 ufw allow 7777:7779/udp > /dev/null
+ufw allow 80/tcp > /dev/null
+ufw allow 443/tcp > /dev/null
 ufw --force enable > /dev/null
 
-cp "$SCRIPT_DIR/set-maps.sh" /opt/ut99/set-maps.sh
-chmod +x /opt/ut99/set-maps.sh
+echo "==> Installing Caddy..."
+apt-get -o DPkg::Lock::Timeout=120 install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+    | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+    | tee /etc/apt/sources.list.d/caddy-stable.list
+apt-get -o DPkg::Lock::Timeout=120 update -qq
+apt-get -o DPkg::Lock::Timeout=120 install -y -qq caddy
+
+echo "==> Configuring Caddy..."
+cat > /etc/caddy/Caddyfile <<EOF
+${ADMIN_DOMAIN} {
+    redir / /ServerAdmin/ permanent
+    reverse_proxy localhost:5080
+}
+EOF
+systemctl enable caddy > /dev/null
+systemctl start caddy
 
 systemctl enable ut99 > /dev/null
 
