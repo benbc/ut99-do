@@ -139,7 +139,7 @@ provision_server() {
     info "Provisioning UT99 server on $ip..."
 
     scp $SSH_OPTS -r "$SCRIPT_DIR/server" "root@${ip}:/tmp/ut99-server"
-    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' > /tmp/provision.log 2>&1"
+    ssh $SSH_OPTS "root@${ip}" "/tmp/ut99-server/provision.sh '$space_url' '$ADMIN_DOMAIN' '$WEBADMIN_PASSWORD' '$INGAME_ADMIN_PASSWORD' > /tmp/provision.log 2>&1"
 }
 
 cmd_create() {
