@@ -14,10 +14,12 @@ info() {
 
 [[ -f "$SCRIPT_DIR/ut99.conf" ]] || die "Config file not found: $SCRIPT_DIR/ut99.conf (see ut99.conf.example)"
 source "$SCRIPT_DIR/ut99.conf"
-[[ -n "${DROPLET_NAME:-}" ]] || die "DROPLET_NAME not set in ut99.conf"
-[[ -n "${REGION:-}" ]]       || die "REGION not set in ut99.conf"
+[[ -n "${DROPLET_NAME:-}" ]]          || die "DROPLET_NAME not set in ut99.conf"
+[[ -n "${REGION:-}" ]]                || die "REGION not set in ut99.conf"
+[[ -n "${ADMIN_DOMAIN:-}" ]]          || die "ADMIN_DOMAIN not set in ut99.conf"
+[[ -n "${WEBADMIN_PASSWORD:-}" ]]     || die "WEBADMIN_PASSWORD not set in ut99.conf"
+[[ -n "${INGAME_ADMIN_PASSWORD:-}" ]] || die "INGAME_ADMIN_PASSWORD not set in ut99.conf"
 # SPACE_NAME is optional — if set, extra maps are downloaded from DO Space during provisioning
-[[ ${#MAP_ROTATION[@]} -gt 0 ]] 2>/dev/null || die "MAP_ROTATION not set in ut99.conf"
 
 DROPLET_SIZE="s-1vcpu-1gb"
 DROPLET_IMAGE="ubuntu-24-04-x64"
