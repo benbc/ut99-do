@@ -121,7 +121,7 @@ ${DOMAIN} {
 }
 EOF
 systemctl enable caddy > /dev/null
-systemctl start caddy
+systemctl restart caddy
 
 systemctl enable ut99 > /dev/null
 
