@@ -48,12 +48,23 @@ current behaviour.
 
 ### INI changes
 
-Applied via `sed -i`, consistent with existing pattern. Added settings:
+Appended as a block at the end of the INI file (via `cat >>`). UT99 (OldUnreal 469) uses
+the last occurrence of a key when a section appears more than once, so appending reliably
+overrides any existing defaults. This is preferred over `sed -i` here because multiple
+new sections and sub-keys are needed, and section-aware sed would be complex and fragile.
+
+Settings appended:
 
 ```ini
 [UWeb.WebServer]
+Applications[0]=UTServerAdmin.UTServerAdmin
+ApplicationPaths[0]=/ServerAdmin
+Applications[1]=UTServerAdmin.UTImageServer
+ApplicationPaths[1]=/images
+DefaultApplication=0
 bEnabled=True
 ListenPort=5080
+MaxConnections=30
 
 [UTServerAdmin.UTServerAdmin]
 AdminUsername=admin
@@ -85,8 +96,9 @@ web server). Enable and start Caddy as a systemd service.
 
 ### Firewall
 
-Add `ufw allow 443/tcp` in `provision.sh` (alongside existing rules) so Caddy can serve
-HTTPS. No other changes. `ufw default deny incoming` already blocks port 5080 from
+Add `ufw allow 80/tcp` and `ufw allow 443/tcp` in `provision.sh` alongside existing rules.
+Port 80 is required for Let's Encrypt HTTP-01 certificate issuance; port 443 for HTTPS
+traffic. No other changes. `ufw default deny incoming` already blocks port 5080 from
 external access. Caddy reaches 5080 via loopback, which UFW permits. Raw `iptables` rules
 are not used (mixing UFW and raw iptables is fragile).
 
