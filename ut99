@@ -313,16 +313,6 @@ cmd_map_add() {
     info "Map $filename added"
 }
 
-cmd_maps() {
-    require_running_droplet
-
-    if [[ $# -eq 0 ]]; then
-        ssh $SSH_OPTS root@"$DROPLET_IP" 'for f in /opt/ut99/Maps/*.unr; do basename "$f" .unr; done' | sort
-    else
-        ssh $SSH_OPTS root@"$DROPLET_IP" /opt/ut99/set-maps.sh "$@"
-    fi
-}
-
 main() {
     [[ $# -ge 1 ]] || { usage; exit 1; }
 
@@ -335,7 +325,6 @@ main() {
         stop)    cmd_stop ;;
         info)    cmd_info ;;
         map-add) cmd_map_add "${@:2}" ;;
-        maps)    cmd_maps "${@:2}" ;;
         ssh)     cmd_ssh "${@:2}" ;;
         scp)     cmd_scp "${@:2}" ;;
         *)       usage; exit 1 ;;
