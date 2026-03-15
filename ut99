@@ -188,12 +188,8 @@ cmd_create() {
     sleep 10
     wait_for_ssh "$ip"
 
-    info "Setting map rotation..."
-    cmd_maps "${MAP_ROTATION[@]}"
-
     check_server_health "$ip"
-    info "UT99 server ready at ${ip}:7777"
-    echo "$ip"
+    cmd_info
 }
 
 cmd_destroy() {
@@ -250,8 +246,7 @@ cmd_start() {
     ip=$(get_droplet_ip "$droplet_id")
     check_server_health "$ip"
 
-    info "UT99 server ready at ${ip}:7777"
-    echo "$ip"
+    cmd_info
 }
 
 cmd_stop() {
